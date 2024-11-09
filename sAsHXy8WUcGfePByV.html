@@ -1,0 +1,579 @@
+<html><head><base href="/" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  .iphone {
+    width: 300px;
+    height: 650px;
+    background: #000;
+    border-radius: 40px;
+    position: relative;
+    box-shadow: 0 0 50px rgba(0,0,0,0.3);
+    border: 12px solid #1f1f1f;
+    box-sizing: border-box;
+  }
+
+  .notch {
+    width: 168px;
+    height: 24px;
+    background: #000;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    z-index: 2;
+  }
+
+  .screen {
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    border-radius: 40px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .map-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
+  }
+
+  .status-bar {
+    position: absolute;
+    top: 5px;
+    left: 0;
+    right: 0;
+    height: 20px;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    color: #000;
+    font-size: 12px;
+    z-index: 3;
+  }
+
+  .time {
+    font-weight: bold;
+  }
+
+  .status-icons {
+    display: flex;
+    gap: 5px;
+  }
+
+  .legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px;
+    border-radius: 12px;
+    z-index: 1000;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .route-line {
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .route-color {
+    display: inline-block;
+    width: 30px;
+    height: 4px;
+    margin-right: 10px;
+    border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  .marker-custom {
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .start-icon svg {
+    transform: rotate(0deg);
+  }
+
+  .end-icon svg {
+    transform: rotate(0deg);
+  }
+
+  .start-icon {
+    animation: bounce 2s infinite;
+  }
+
+  .end-icon {
+    animation: bounce 2s infinite 0.5s;
+  }
+
+  @keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
+  }
+
+  .leaflet-marker-pane {
+    z-index: 500;
+  }
+
+  .marker-custom svg {
+    filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));
+  }
+
+  .leaflet-routing-container {
+    display: none;
+  }
+
+  .return-button {
+    position: absolute;
+    top: 40px;
+    left: 20px;
+    background: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    z-index: 1000;
+    display: none;
+  }
+
+  .return-button:hover {
+    background: #f0f0f0;
+  }
+
+  .select-button {
+    position: absolute;
+    top: 40px;
+    right: 20px;
+    background: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    z-index: 1000;
+    display: none;
+  }
+
+  .select-button:hover {
+    background: #f0f0f0;
+  }
+
+  .route-info {
+    position: absolute;
+    bottom: 120px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px;
+    border-radius: 12px;
+    z-index: 1000;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 1px solid rgba(0,0,0,0.1);
+    display: none;
+  }
+
+  .info-item {
+    margin: 5px 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .info-icon {
+    margin-right: 10px;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .depth-tooltip {
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    white-space: pre-line;
+    line-height: 1.4;
+  }
+
+  .warning-message {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 0, 0, 0.9);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    z-index: 1000;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    display: none;
+  }
+</style>
+</head>
+<body>
+  <div class="iphone">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="status-icons">
+          <span>5G</span>
+          <span>100%</span>
+        </div>
+      </div>
+      <div class="map-container">
+        <div id="map"></div>
+        <div class="warning-message">Please make sure your car is safe to drive</div>
+        <button class="return-button">Return to All Routes</button>
+        <button class="select-button">Select</button>
+        <div class="route-info">
+          <div class="info-item">
+            <div class="info-icon">⏱️</div>
+            <span>Travel Time: 20 mins</span>
+          </div>
+          <div class="info-item">
+            <div class="info-icon">📏</div>
+            <span>Total Distance: 6.2 miles</span>
+          </div>
+          <div class="info-item">
+            <div class="info-icon">💧</div>
+            <span>Average Water Depth: 10 cm</span>
+          </div>
+          <div class="info-item">
+            <div class="info-icon">🌊</div>
+            <span>Maximum Water Depth: 20 cm</span>
+          </div>
+          <div class="info-item">
+            <div class="info-icon">⚠️</div>
+            <span>Maximum Flooding Significance: 3</span>
+          </div>
+          <div class="info-item">
+            <div class="info-icon">📊</div>
+            <span>Share of the Significance 3: 10% (0.62 miles)</span>
+          </div>
+          <div class="info-item" style="display: flex;">
+            <div class="info-icon">📊</div>
+            <span>Share of the Significance 2: 60% (3.72 miles)</span>
+          </div>
+          <div class="info-item">
+            <div class="info-icon">🚗</div>
+            <span>Estimated Congestion: Moderate</span>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="route-line" data-route="0">
+            <span class="route-color" style="background: #FF416C"></span>
+            Fastest Route
+          </div>
+          <div class="route-line" data-route="1">
+            <span class="route-color" style="background: #11998e"></span>
+            Safest Route
+          </div>
+          <div class="route-line" data-route="2">
+            <span class="route-color" style="background: #4776E6"></span>
+            Alternative Route
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let map; // Make map globally accessible
+    let routeLines = [[], [], []]; // Initialize routeLines as array of arrays for each route
+    let returnButton;
+    let selectButton;
+    let routeInfo;
+
+    function updateTime() {
+      const timeElement = document.querySelector('.time');
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      timeElement.textContent = `${hours}:${minutes.toString().padStart(2, '0')}`;
+    }
+    
+    setInterval(updateTime, 1000);
+    updateTime();
+
+    document.addEventListener('DOMContentLoaded', () => {
+      map = L.map('map').setView([41.8486, -87.6318], 14);
+      returnButton = document.querySelector('.return-button');
+      selectButton = document.querySelector('.select-button');
+      routeInfo = document.querySelector('.route-info');
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      const startIcon = L.divIcon({
+        className: 'marker-custom start-icon',
+        html: `<svg width="32" height="32" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" fill="#FF416C"/>
+          <text x="12" y="16" text-anchor="middle" fill="white" style="font-size: 12px; font-weight: bold;">S</text>
+        </svg>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
+      const endIcon = L.divIcon({
+        className: 'marker-custom end-icon',
+        html: `<svg width="32" height="32" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" fill="#38ef7d"/>
+          <text x="12" y="16" text-anchor="middle" fill="white" style="font-size: 12px; font-weight: bold;">E</text>
+        </svg>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
+      const startPoint = [41.8486, -87.6318];
+      const endPoint = [41.8827, -87.6233];
+
+      const routes = [
+        [startPoint, endPoint],
+        [startPoint, [41.8600, -87.6400], endPoint],
+        [startPoint, [41.8650, -87.6280], endPoint]
+      ];
+
+      L.marker(startPoint, {icon: startIcon}).addTo(map);
+      L.marker(endPoint, {icon: endIcon}).addTo(map);
+
+      const colors = ['#FF416C', '#11998e', '#4776E6'];
+
+      const routeFloodingData = {
+        0: [
+          { start: 0, end: 0.2, depth: 0, traffic: "2 min" },
+          { start: 0.2, end: 0.3, depth: 10, traffic: "4 min" },
+          { start: 0.3, end: 0.4, depth: 0, traffic: "3 min" },
+          { start: 0.4, end: 0.5, depth: 10, traffic: "3 min" },
+          { start: 0.5, end: 0.6, depth: 0, traffic: "4 min" },
+          { start: 0.6, end: 0.7, depth: 10, traffic: "3 min" },
+          { start: 0.7, end: 1, depth: 0, traffic: "2 min" }
+        ],
+        1: [
+          { start: 0, end: 0.2, depth: 0, traffic: "3 min" },
+          { start: 0.2, end: 0.3, depth: 10, traffic: "4 min" },
+          { start: 0.3, end: 0.4, depth: 0, traffic: "4 min" },
+          { start: 0.4, end: 0.5, depth: 10, traffic: "3 min" },
+          { start: 0.5, end: 0.6, depth: 0, traffic: "4 min" },
+          { start: 0.6, end: 0.7, depth: 10, traffic: "4 min" },
+          { start: 0.7, end: 1, depth: 0, traffic: "3 min" }
+        ],
+        2: [
+          { start: 0, end: 0.2, depth: 0, traffic: "2 min" },
+          { start: 0.2, end: 0.3, depth: 25, traffic: "3 min" },
+          { start: 0.3, end: 0.4, depth: 0, traffic: "2 min" },
+          { start: 0.4, end: 0.5, depth: 32, traffic: "3 min" },
+          { start: 0.5, end: 0.6, depth: 0, traffic: "2 min" },
+          { start: 0.6, end: 0.7, depth: 20, traffic: "2 min" },
+          { start: 0.7, end: 1, depth: 0, traffic: "2 min" }
+        ]
+      };
+
+      routes.forEach((routePoints, index) => {
+        const waypointsStr = routePoints.map(p => `${p[1]},${p[0]}`).join(';');
+        fetch(`https://router.project-osrm.org/route/v1/driving/${waypointsStr}?overview=full&geometries=geojson`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.routes && data.routes[0]) {
+              const coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+              const floodingDataForRoute = routeFloodingData[index];
+              
+              floodingDataForRoute.forEach(segment => {
+                const startIndex = Math.floor(coordinates.length * segment.start);
+                const endIndex = Math.floor(coordinates.length * segment.end);
+                const segmentCoords = coordinates.slice(startIndex, endIndex + 1);
+                
+                const intensity = Math.min(segment.depth / 20, 1);
+                let color;
+                if (index === 0) {
+                  color = segment.depth === 0 ? '#FF416C' : `rgb(255, ${Math.floor(200 * (1 - intensity))}, ${Math.floor(200 * (1 - intensity))})`;
+                } else if (index === 1) {
+                  color = segment.depth === 0 ? '#11998e' : `rgb(17, ${Math.floor(153 * (1 - intensity))}, ${Math.floor(142 * (1 - intensity))})`;
+                } else {
+                  color = segment.depth === 0 ? '#4776E6' : `rgb(71, ${Math.floor(118 * (1 - intensity))}, ${Math.floor(230 * (1 - intensity))})`;
+                }
+                
+                const line = L.polyline(segmentCoords, {
+                  color: color,
+                  weight: 5,
+                  opacity: 0.8,
+                  dashArray: index === 2 ? '10, 10' : null
+                }).addTo(map);
+
+                line.on('mouseover', (e) => {
+                  const tooltipText = segment.depth === 0 
+                    ? `No flooding\nTraffic: ${segment.traffic}` 
+                    : `Flooding depth: ${segment.depth}cm\nTraffic: ${segment.traffic}`;
+                  
+                  line.bindTooltip(tooltipText, {
+                    className: 'depth-tooltip',
+                    sticky: true
+                  }).openTooltip();
+                });
+
+                routeLines[index].push(line); // Store line in the appropriate route array
+                line.on('click', () => showSingleRoute(index));
+              });
+            }
+          });
+      });
+
+      returnButton.addEventListener('click', showAllRoutes);
+      selectButton.addEventListener('click', () => {
+        alert('Route selected!');
+      });
+
+      const bounds = L.latLngBounds([startPoint, endPoint]).pad(0.1);
+      map.fitBounds(bounds);
+    });
+
+    function showSingleRoute(index) {
+      // Hide all routes
+      routeLines.forEach((routeSegments, i) => {
+        routeSegments.forEach(line => {
+          if (i === index) {
+            line.addTo(map);
+          } else {
+            line.remove();
+          }
+        });
+      });
+      
+      document.querySelectorAll('.route-line').forEach(el => {
+        if (el.dataset.route === index.toString()) {
+          el.style.display = 'flex';
+        } else {
+          el.style.display = 'none';
+        }
+      });
+      returnButton.style.display = 'block';
+      selectButton.style.display = 'block';
+      routeInfo.style.display = 'block';
+      
+      const warningMessage = document.querySelector('.warning-message');
+      if (index === 2) { // Blue route
+        warningMessage.style.display = 'block';
+      } else {
+        warningMessage.style.display = 'none';
+      }
+      
+      const routeData = {
+        0: { // Red route
+          time: "20 mins",
+          distance: "5.8 miles",
+          cumDepth: "10 cm",
+          maxDepth: "20 cm",
+          significance: "3",
+          exceedCount: "50% (2.92 miles)",
+          sig2Share: "30% (1.74 miles)",
+          congestion: "Moderate"
+        },
+        1: { // Green route - updated stats
+          time: "30 mins",
+          distance: "6.2 miles",
+          cumDepth: "2 cm",
+          maxDepth: "5 cm",
+          significance: "3",
+          exceedCount: "10% (0.62 miles)",
+          sig2Share: "60% (3.72 miles)",
+          congestion: "Moderate"
+        },
+        2: { // Blue route
+          time: "22 mins",
+          distance: "5.5 miles",
+          cumDepth: "25 cm",
+          maxDepth: "33 cm",
+          significance: "3",
+          exceedCount: "70% (3.85 miles)",
+          sig2Share: "30% (1.65 miles)",
+          congestion: "Light"
+        }
+      };
+
+      const data = routeData[index];
+      document.querySelector('.route-info .info-item:nth-child(1) span').textContent = `Travel Time: ${data.time}`;
+      document.querySelector('.route-info .info-item:nth-child(2) span').textContent = `Total Distance: ${data.distance}`;
+      document.querySelector('.route-info .info-item:nth-child(3) span').textContent = `Average Water Depth: ${data.cumDepth}`;
+      document.querySelector('.route-info .info-item:nth-child(4) span').textContent = `Maximum Water Depth: ${data.maxDepth}`;
+      document.querySelector('.route-info .info-item:nth-child(5) span').textContent = `Maximum Flooding Significance: ${data.significance}`;
+      if (index === 0) { // Red route
+        document.querySelector('.route-info .info-item:nth-child(6) span').textContent = 
+          `Share of the Significance 3: ${data.exceedCount}`;
+        document.querySelector('.route-info .info-item:nth-child(7) span').textContent = 
+          `Share of the Significance 2: ${data.sig2Share}`;
+        document.querySelector('.route-info .info-item:nth-child(8) span').textContent = 
+          `Estimated Congestion: ${data.congestion}`;
+        document.querySelector('.route-info .info-item:nth-child(7)').style.display = 'flex';
+        document.querySelector('.route-info .info-item:nth-child(8)').style.display = 'flex';
+      } else if (index === 1) { // Green route
+        document.querySelector('.route-info .info-item:nth-child(6) span').textContent = 
+          `Share of the Significance 3: ${data.exceedCount}`;
+        document.querySelector('.route-info .info-item:nth-child(7) span').textContent = 
+          `Share of the Significance 2: ${data.sig2Share}`;
+        document.querySelector('.route-info .info-item:nth-child(8) span').textContent = 
+          `Estimated Congestion: ${data.congestion}`;
+        document.querySelector('.route-info .info-item:nth-child(7)').style.display = 'flex';
+        document.querySelector('.route-info .info-item:nth-child(8)').style.display = 'flex';
+      } else { // Blue route
+        document.querySelector('.route-info .info-item:nth-child(6) span').textContent = 
+          `Share of the Significance 3: ${data.exceedCount}`;
+        document.querySelector('.route-info .info-item:nth-child(7) span').textContent = 
+          `Share of the Significance 2: ${data.sig2Share}`;
+        document.querySelector('.route-info .info-item:nth-child(8) span').textContent = 
+          `Estimated Congestion: ${data.congestion}`;
+        document.querySelector('.route-info .info-item:nth-child(7)').style.display = 'flex';
+        document.querySelector('.route-info .info-item:nth-child(8)').style.display = 'flex';
+      }
+    }
+    
+    function showAllRoutes() {
+      routeLines.forEach(routeSegments => {
+        routeSegments.forEach(line => line.addTo(map));
+      });
+      document.querySelectorAll('.route-line').forEach(el => el.style.display = 'flex');
+      returnButton.style.display = 'none';
+      selectButton.style.display = 'none';
+      routeInfo.style.display = 'none';
+      document.querySelector('.warning-message').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
